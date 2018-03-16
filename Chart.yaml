@@ -1,0 +1,9 @@
+description: Kubernetes CICD
+name: k8s-cd
+version: 0.0.1
+home: https://github.com/deadishlabs/k8s-cd
+sources:
+  - https://github.com/deadishlabs/k8s-cd
+maintainers:
+  - name: https://github.com/deadishlabs/k8s-cd
+engine: gotpl 

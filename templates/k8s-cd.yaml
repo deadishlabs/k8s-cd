@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "{{ printf "%s-%s" "docker-config" .Values.k8scd.service.name | trunc 24 }}"
+  namespace: {{.Release.Namespace}}
+  labels:
+    heritage: {{.Release.Service | quote }}
+    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    release: {{.Release.Name | quote }}
+  annotations:
+    "helm.sh/created": {{.Release.Time.Seconds | quote }}
+    "helm.sh/hook": pre-install
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: {{ b64enc .Values.global.registry.credentials}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "{{.Values.k8scd.service.name | trunc 24 }}-tokens"
+  namespace: {{.Release.Namespace}}
+  labels:
+    heritage: {{.Release.Service | quote }}
+    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    release: {{.Release.Name | quote }}
+  annotations:
+    "helm.sh/created": {{.Release.Time.Seconds | quote }}
+type: Opaque
+data:
+  npmtoken: {{ b64enc .Values.k8scd.secrets.npmtoken | quote}}
+  ghtoken: {{ b64enc .Values.k8scd.secrets.ghtoken | quote}}
+  ghuser: {{ b64enc .Values.k8scd.secrets.ghuser | quote}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "{{.Values.k8scd.service.name | trunc 24 }}-kube"
+  namespace: {{.Release.Namespace}}
+  labels:
+    heritage: {{.Release.Service | quote }}
+    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    release: {{.Release.Name | quote }}
+  annotations:
+    "helm.sh/created": {{.Release.Time.Seconds | quote }}
+type: Opaque
+data:
+  kubeconfig: {{ b64enc .Values.k8scd.secrets.kubeconfig | quote}}
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: "{{.Values.k8scd.service.name | trunc 24 }}"
+  namespace: {{.Release.Namespace}}
+  labels:
+    app: "{{.Values.k8scd.service.name | trunc 24 }}"
+    heritage: {{.Release.Service | quote }}
+    chart: "{{.Chart.Name}}-{{.Chart.Version}}"
+    release: {{.Release.Name | quote }}
+    group: {{.Values.global.group}}
+    provider: {{.Values.global.provider}}
+    mode: {{.Values.global.mode}}
+  annotations:
+    "helm.sh/created": {{.Release.Time.Seconds | quote }}
+spec:
+  schedule: {{ .Values.k8scd.settings.schedule | quote }}
+  jobTemplate:
+    metadata:
+      labels:
+        app: "{{.Values.k8scd.service.name | trunc 24 }}"
+        group: {{.Values.global.group}}
+        provider: {{.Values.global.provider}}
+        mode: {{.Values.global.mode}}
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: "{{.Values.k8scd.service.name | trunc 24 }}"
+            restartPolicy: Never
+            resources:
+{{ toYaml .Values.k8scd.resources | indent 16 }}
+            image: {{.Values.global.registry.host}}/{{.Values.k8scd.service.name}}:{{.Values.k8scd.image.dockerTag}}
+            imagePullPolicy: IfNotPresent
+            env:
+            - name: GITHUB
+              value: {{ .Values.k8scd.settings.gitHub | quote }}
+            env:
+            - name: GITHUB2
+              value: {{ .Values.k8scd.settings.gitHub2 | quote }}
+            env:
+            - name: REGISTRY
+              value: {{ .Values.k8scd.settings.dockerRegistry | quote }}
+            env:
+            - name: "NPM_TOKEN"
+              valueFrom:
+                secretKeyRef:
+                  name: "{{.Values.k8scd.service.name | trunc 24 }}-tokens"
+                  key: npmtoken
+            env:
+            - name: "GH_TOKEN"
+              valueFrom:
+                secretKeyRef:
+                  name: "{{.Values.k8scd.service.name | trunc 24 }}-tokens"
+                  key: ghtoken
+            - name: "GH_USER"
+              valueFrom:
+                secretKeyRef:
+                  name: "{{.Values.k8scd.service.name | trunc 24 }}-tokens"
+                  key: ghuser      
+            volumeMounts:
+              - name: "{{.Values.k8scd.service.name | trunc 24 }}-kube"
+                mountPath: /etc/kube
+                readOnly: true
+          imagePullSecrets:
+            - name: "{{ printf "%s-%s" "docker-config" .Values.k8scd.service.name | trunc 24 }}"
+          volumes:
+            - name:  "{{.Values.k8scd.service.name | trunc 24 }}-kube"
+              secret:
+                secretName:  "{{.Values.k8scd.service.name | trunc 24 }}-kube"

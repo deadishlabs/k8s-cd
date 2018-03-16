@@ -1,0 +1,65 @@
+global:
+  registry:
+    host: <registry>
+    credentials: >-
+      {
+        "auths": {
+          "https://private.io/registry": {
+            "auth": "",
+            "email": ""
+          }
+        }
+      }
+  imagePullPolicy: IfNotPresent
+  
+k8scd:
+  replicaCount: 1
+  image:
+    dockerTag: v0.0.1
+  service:
+    name: k8s-cd
+  settings:
+    schedule: "*/59 * * * *"
+    dockerRegistry: "private.io/registry"
+    gitHub: "https://github.com/org"
+    gitHub2: "github.com/org"
+  resources:
+    limits:
+      cpu: 100m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 256Mi
+  secrets:
+    npmtoken: <notNeeded>
+    ghuser: githubuser
+    ghtoken: githubuser-personal-token
+    #need to provide your kubeconfig so the script can update your deployment
+    kubeconfig: |-
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority-data: 
+          server: 
+        name: 
+      contexts:
+      - context:
+          cluster: 
+          user: 
+        name: 
+      current-context: 
+      kind: Config
+      preferences: {}
+      users:
+      - name: 
+        user:
+          as-user-extra: {}
+          client-certificate-data:
+          client-key-data: 
+          password: 
+          username: 
+      - name:
+        user:
+          as-user-extra: {}
+          password: 
+          username: 
